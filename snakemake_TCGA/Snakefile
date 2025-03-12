@@ -1,0 +1,40 @@
+configfile: "config.yaml"
+
+rule all:
+    input:
+        expand(config["output"]+"/{cancer_type}/{cancer_type}.vcf", cancer_type=config["cancer_types"])
+
+# Takes matrices of mutated sequences and generates vcf for plink association 
+rule make_vcf:
+    input:
+        ESM_input = config["data_folder"]+"/{cancer_type}/ESM_inputs/",
+        mutated_sequences = config["data_folder"]+"/{cancer_type}/mutated_sequences/aa/"
+    output:
+        vcf = config["output"]+"/{cancer_type}/{cancer_type}_haplotype.vcf"
+    script:
+        "../scripts/haplotype_vcf.R"
+
+# Turn the vcf into a suitable file format for plink2
+rule make_pfiles:
+    input:
+        rules.make_vcf.output
+    output:
+        config["output"]+"/{cancer_type}/pfiles/{cancer_type}"
+    shell:
+        '''/shares/CIBIO-Storage/BCG/scratch1/Tools/plink2.0/plink2 /
+            --vcf {input} /
+            --make-pgen /
+            --out {output} /
+            --vcf-half-call m
+        '''
+
+# Given the vcf just produced, generate covariates and phenotypes file for the samples present in the 
+# vcf
+rule make_cov_pheno:
+    input:
+        vcf = rules.make_vcf.output
+    output:
+        cov = config["output"]+"/{cancer_type}/cov/covariates",
+        pheno = config["output"]+"/{cancer_type}/pheno/phenotypes"
+    script:
+        "../scripts/make_covariates_pheno.R"
