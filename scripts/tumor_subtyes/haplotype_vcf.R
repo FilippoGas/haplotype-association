@@ -13,15 +13,17 @@ ESM_input_path = snakemake@input[["ESM_input"]]
 # ALT alleles will be removed
 ALT_limit <- 254
 
-# Import mutated sequences, wt sequences and transcripts annotations
-
+# Get tumor type
+tumor_type <- strsplit(basename(snakemake@output[[1]]), "_", 1)
+# Import mutated sequences, wt sequences and transcripts annotations.
 # Mutated sequences are divided by chromosome so they need to be loaded independently 
 # and concatenated
+
 mutated_sequences_path <- snakemake@input[["mutated_sequences"]]
 first <- TRUE
 for (file in list.files(path = mutated_sequences_path)) {
     
-    load(file)
+    load(paste0(mutated_sequences_path, "/", file))
     
     if (first) {
         
@@ -36,8 +38,8 @@ for (file in list.files(path = mutated_sequences_path)) {
     
 }
 
-load("/shares/CIBIO-Storage/BCG/scratch/proteinModel/phasing/resources/cds/transcript_annotations.RData")
-load("/shares/CIBIO-Storage/BCG/scratch/proteinModel/phasing/resources/cds/wt_aa.RData")
+load("/shares/CIBIO-Storage/BCG/scratch/fgastaldello/resources/protein_coding_transcripts/protein_coding_transcripts.RData")
+load("/shares/CIBIO-Storage/BCG/scratch/fgastaldello/resources/protein_coding_transcripts/wt_aa.RData")
 sequences_aa <- column_to_rownames(sequences_aa, var = "ensembl_transcript_id")
 
 # From the transcript annotation df I only need the transcript start and chromosome
@@ -55,9 +57,13 @@ haplotypes_ID <- data.frame("haplotype_ID" = character(),
                             "sequence" = character())
 colnames(haplotypes_ID) <- c("haplotype_ID", "sequence")
 
-
 # A unique list of haplotypes for each transcript is present in the ESM_input files
-for (file in list.files(path = ESM_input_path)){
+files = list.files(path = ESM_input_path)
+
+# Initialize progress bar to follow progress
+pb = txtProgressBar(min = 0, max = length(files), initial = 0, style = 3, title = paste0(tumor_type, " haplotype ID generation"))
+i <- 0
+for (file in files){
     
     # First, get the ensembl transcript ID from the filename
     enst_id <- str_split_i(file, pattern = ".csv", 1)
@@ -85,7 +91,11 @@ for (file in list.files(path = ESM_input_path)){
             
         }
     }
+    i <- i + 1
+    setTxtProgressBar(pb, i)
 }
+close(pb)
+
 
 haplotypes_ID <- haplotypes_ID %>% mutate(ensembl_transcript_id = str_split_i(haplotype_ID, "\\.",1),
                                           rowname = paste0(sequence, ensembl_transcript_id))
@@ -143,12 +153,13 @@ vcf_body <- vcf_body %>% filter(!is.na(ALT))
 vcf_body <- vcf_body %>% filter(sapply(ALT, function(x) length(str_split_1(x, ",")) <= ALT_limit))
 
 # For each transcript, check genotype of each sample
-transcript_count <- 1; total_transcripts <- length(vcf_body$ID)
+transcript_count <- 1
+
+# Initiate progress bar to follow progress
+pb = txtProgressBar(min = 0, max = length(vcf_body$ID), initial = 0, style = 3, title = paste0(tumor_type, " vcf generation"))
 
 for (transcript in vcf_body$ID) {
     
-    # Print progress
-    cat(paste0("transcript ", transcript_count, " of ", total_transcripts,"\n"))
     
     # Subset haplotype_ID
     transcript_IDs <- haplotypes_ID %>% filter(ensembl_transcript_id == transcript)
@@ -194,7 +205,11 @@ for (transcript in vcf_body$ID) {
     
     transcript_count <- transcript_count + 1
     
+    # Update progress bar
+    setTxtProgressBar(pb, transcript_count)
 }
+
+close(pb)
 
 # Save vcf as tsv
 write_tsv(vcf_body, file = paste0(snakemake@output[["vcf"]]))
