@@ -1,0 +1,56 @@
+host: cibio-bcglab4
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 10
+Rules claiming more threads will be scaled down.
+Job stats:
+job         count
+--------  -------
+all             1
+make_vcf        2
+total           3
+
+Select jobs to execute...
+Execute 2 jobs...
+
+[Thu Mar 13 10:35:17 2025]
+localrule make_vcf:
+    input: /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/cvep-plm/tumors/DLBC/ESM_inputs, /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/cvep-plm/tumors/DLBC/mutated_sequences/aa
+    output: /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/TCGA_haplotype_associations/TCGA/DLBC/vcf/DLBC_haplotype.vcf
+    jobid: 1
+    reason: Missing output files: /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/TCGA_haplotype_associations/TCGA/DLBC/vcf/DLBC_haplotype.vcf
+    wildcards: cancer_type=DLBC
+    resources: tmpdir=/tmp
+
+[Thu Mar 13 10:35:17 2025]
+localrule make_vcf:
+    input: /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/cvep-plm/tumors/UCS/ESM_inputs, /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/cvep-plm/tumors/UCS/mutated_sequences/aa
+    output: /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/TCGA_haplotype_associations/TCGA/UCS/vcf/UCS_haplotype.vcf
+    jobid: 2
+    reason: Missing output files: /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/TCGA_haplotype_associations/TCGA/UCS/vcf/UCS_haplotype.vcf
+    wildcards: cancer_type=UCS
+    resources: tmpdir=/tmp
+
+RuleException:
+CalledProcessError in file /shares/CIBIO-Storage/BCG/scratch/fgastaldello/code/haplotype-association/snakemake_TCGA/Snakefile, line 15:
+Command 'set -euo pipefail;  Rscript --vanilla /shares/CIBIO-Storage/BCG/scratch/fgastaldello/code/haplotype-association/snakemake_TCGA/.snakemake/scripts/tmpale4gzpe.haplotype_vcf.R' returned non-zero exit status 1.
+[Thu Mar 13 10:35:21 2025]
+Error in rule make_vcf:
+    jobid: 1
+    input: /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/cvep-plm/tumors/DLBC/ESM_inputs, /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/cvep-plm/tumors/DLBC/mutated_sequences/aa
+    output: /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/TCGA_haplotype_associations/TCGA/DLBC/vcf/DLBC_haplotype.vcf
+
+RuleException:
+CalledProcessError in file /shares/CIBIO-Storage/BCG/scratch/fgastaldello/code/haplotype-association/snakemake_TCGA/Snakefile, line 15:
+Command 'set -euo pipefail;  Rscript --vanilla /shares/CIBIO-Storage/BCG/scratch/fgastaldello/code/haplotype-association/snakemake_TCGA/.snakemake/scripts/tmp9ms70lj0.haplotype_vcf.R' returned non-zero exit status 1.
+[Thu Mar 13 10:35:21 2025]
+Error in rule make_vcf:
+    jobid: 2
+    input: /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/cvep-plm/tumors/UCS/ESM_inputs, /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/cvep-plm/tumors/UCS/mutated_sequences/aa
+    output: /shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/TCGA_haplotype_associations/TCGA/UCS/vcf/UCS_haplotype.vcf
+
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2025-03-13T103516.277147.snakemake.log
+WorkflowError:
+At least one job did not complete successfully.

@@ -2,7 +2,7 @@ configfile: "config.yaml"
 
 rule all:
     input:
-        expand(config["output"]+"/{cancer_type}/{cancer_type}.vcf", cancer_type=config["cancer_types"])
+        expand(config["output"]+"/{cancer_type}/vcf/{cancer_type}_haplotype.vcf", cancer_type=config["cancer_types"])
 
 # Takes matrices of mutated sequences and generates vcf for plink association 
 rule make_vcf:
@@ -10,7 +10,7 @@ rule make_vcf:
         ESM_input = config["data_folder"]+"/{cancer_type}/ESM_inputs/",
         mutated_sequences = config["data_folder"]+"/{cancer_type}/mutated_sequences/aa/"
     output:
-        vcf = config["output"]+"/{cancer_type}/{cancer_type}_haplotype.vcf"
+        vcf = config["output"]+"/{cancer_type}/vcf/{cancer_type}_haplotype.vcf"
     script:
         "../scripts/haplotype_vcf.R"
 
