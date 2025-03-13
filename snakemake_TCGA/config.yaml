@@ -6,3 +6,7 @@ output: "/shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/TCGA_haplotype_asso
 cancer_types: ["DLBC","UCS"]
 # "UVM","DLBC","ACC","BLCA","BRCA","CESC","CHOL","COAD","ESCA","GBM","HNSC","KICH","KIRC","KIRP","LAML","LGG","LIHC","LUAD","LUSC","MESO","OV","PAAD","PCPG","PRAD","READ","SARC","SKCM","STAD","TGCT","THCA","THYM","UCEC","UCS"
 
+# RULES
+
+# make_vcf
+analysis_type: "tumor_vs_tumor" # "tumor_vs_tumor", "tumor_subtype"
