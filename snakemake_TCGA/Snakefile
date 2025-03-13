@@ -12,7 +12,7 @@ rule make_vcf:
     output:
         vcf = config["output"]+"/{cancer_type}/vcf/{cancer_type}_haplotype.vcf"
     script:
-        "../scripts/haplotype_vcf.R"
+        "../scripts/"config["analysis_type"]"/haplotype_vcf.R"
 
 # Turn the vcf into a suitable file format for plink2
 rule make_pfiles:
