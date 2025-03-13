@@ -8,5 +8,7 @@ cancer_types: ["DLBC","UCS"]
 
 # RULES
 
-# make_vcf
-analysis_type: "tumor_vs_tumor" # "tumor_vs_tumor", "tumor_subtype"
+# Analysis type
+tumor_subtypes:     FALSE
+tumor_vs_tumor:     TRUE
+pathway_alteration: FALSE

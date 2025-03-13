@@ -1,23 +1,45 @@
+# This pipeline can be run for different types of analysis (tumor subtypes, tumor vs tumor...) 
+# Based on the specification in the config file
+
 configfile: "config.yaml"
+
+# Select outputs expected by rule all based on config
+outputs = list()
+if config["tumor_subtypes"]:
+    outputs.append('''PUT HERE FINAL OUTPUT OF TUMOR SUBTYPES SUB-PIPELINE''')
+if config["tumor_vs_tumor"]:
+    outputs.append(config["output"]+"/tumor_vs_tumor/haplotype.vcf"),
+    outputs.append(config["output"]+"/tumor_vs_tumor/haplotype_IDs.csv")
+if config["pathway_alteration"]:
+    output.append('''PUT HERE FINAL OUTPUT OF PATHWAY ALTERATION SUB-PIPELINE ''')
 
 rule all:
     input:
-        expand(config["output"]+"/{cancer_type}/vcf/{cancer_type}_haplotype.vcf", cancer_type=config["cancer_types"])
+        outputs
+
+
+#===================================================#
+#   TUMOR SUBTYPES                                  #
+#                                                   #
+#   Within each tumor, run associations for each    #
+#   tumor subtype against all the other subtypes    #
+#   of the same tumor type                          #
+#===================================================#
 
 # Takes matrices of mutated sequences and generates vcf for plink association 
-rule make_vcf:
+rule make_vcf_ts:
     input:
         ESM_input = config["data_folder"]+"/{cancer_type}/ESM_inputs/",
         mutated_sequences = config["data_folder"]+"/{cancer_type}/mutated_sequences/aa/"
     output:
         vcf = config["output"]+"/{cancer_type}/vcf/{cancer_type}_haplotype.vcf"
     script:
-        "../scripts/"config["analysis_type"]"/haplotype_vcf.R"
+        "../scripts/tumor_subtypes/haplotype_vcf.R"
 
 # Turn the vcf into a suitable file format for plink2
-rule make_pfiles:
+rule make_pfiles_ts:
     input:
-        rules.make_vcf.output
+        rules.make_vcf_ts.output
     output:
         config["output"]+"/{cancer_type}/pfiles/{cancer_type}"
     shell:
@@ -30,11 +52,30 @@ rule make_pfiles:
 
 # Given the vcf just produced, generate covariates and phenotypes file for the samples present in the 
 # vcf
-rule make_cov_pheno:
+rule make_cov_pheno_ts:
     input:
-        vcf = rules.make_vcf.output
+        vcf = rules.make_vcf_ts.output
     output:
         cov = config["output"]+"/{cancer_type}/cov/covariates",
         pheno = config["output"]+"/{cancer_type}/pheno/phenotypes"
     script:
         "../scripts/make_covariates_pheno.R"
+
+
+#===================================================#
+#   TUMOR VS TUMOR                                  #
+#                                                   #
+#   Run association on each tumor type against all  #
+#   the other tumor types                           #
+#===================================================#
+
+# Takes matrices of mutated sequences and generates vcf for plink association 
+rule make_vcf_tt:
+    # Inputs (the list of tumor types, the transcripts wt sequences and the trasncripts
+    # annotations) are taken directly from inside the script since they are constant and
+    # can be read from the config file
+    output:
+        vcf = config["output"]+"/tumor_vs_tumor/haplotype.vcf",
+        IDs = config["output"]+"/tumor_vs_tumor/haplotype_IDs.csv"
+    script:
+        "../scripts/tumor_vs_tumor/haplotype_vcf.R"
