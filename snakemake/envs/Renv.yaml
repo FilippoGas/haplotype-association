@@ -1,0 +1,8 @@
+name: Renv
+channels:
+ - conda-forge
+ - bioconda
+dependencies:
+ - r-base=4.2.2
+ - r-tidyverse=2.0.0
+ - r-readxl=1.4.3

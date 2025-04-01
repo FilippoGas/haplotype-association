@@ -55,7 +55,7 @@ rm(protein_coding_transcripts)
 # Create the df structure for the new IDs
 haplotypes_ID <- data.frame("haplotype_ID" = character(),
                             "sequence" = character())
-colnames(haplotypes_ID) <- c("haplotype_ID", "sequence")
+colnames(haplotypes_ID) <- c("haplotype_ID", "sequence") #serve?
 
 # A unique list of haplotypes for each transcript is present in the ESM_input files
 files = list.files(path = ESM_input_path)
@@ -131,14 +131,14 @@ for (vector in alt_ID_col) {
 alternatives <- alternatives %>% mutate(REF = str_split_i(str_split_i(str_split_i(ALT,",",1),"\\.",1), "<", 2))
 
 vcf_body <- data.frame("CHROM" = transcript_positions$chromosome_name,
-                       "POS" = transcript_positions$transcript_start,
-                       "ID" = transcript_positions$ensembl_transcript_id,
-                       "REF" = transcript_positions$ensembl_transcript_id) %>% dplyr::rename(`#CHROM` = CHROM)
+                   "POS" = transcript_positions$transcript_start,
+                   "ID" = transcript_positions$ensembl_transcript_id,
+                   "REF" = transcript_positions$ensembl_transcript_id) %>% dplyr::rename(`#CHROM` = CHROM)
 vcf_body <- vcf_body %>% left_join(alternatives, by = "REF")
 vcf_body <- cbind(vcf_body, data.frame("QUAL" = rep(60, length(vcf_body$POS)),
-                                       "FILTER" = rep("PASS", length(vcf_body$POS)),
-                                       "INFO" = rep(".", length(vcf_body$POS)),
-                                       "FORMAT" = rep("GT", length(vcf_body$POS))))
+                                   "FILTER" = rep("PASS", length(vcf_body$POS)),
+                                   "INFO" = rep(".", length(vcf_body$POS)),
+                                   "FORMAT" = rep("GT", length(vcf_body$POS))))
 
 # Add ">" before REF alleles annotation as required in Plink2.0 specifications
 vcf_body <- vcf_body %>% mutate(REF = paste0("<", REF))
@@ -154,12 +154,7 @@ vcf_body <- vcf_body %>% filter(sapply(ALT, function(x) length(str_split_1(x, ",
 
 # For each transcript, check genotype of each sample
 transcript_count <- 1
-
-# Initiate progress bar to follow progress
-pb = txtProgressBar(min = 0, max = length(vcf_body$ID), initial = 0, style = 3, title = paste0(tumor_type, " vcf generation"))
-
 for (transcript in vcf_body$ID) {
-    
     
     # Subset haplotype_ID
     transcript_IDs <- haplotypes_ID %>% filter(ensembl_transcript_id == transcript)
@@ -202,14 +197,8 @@ for (transcript in vcf_body$ID) {
         }
         vcf_body[transcript_count, sample] <- paste0(allele_1, "/", allele_2)
     }
-    
     transcript_count <- transcript_count + 1
-    
-    # Update progress bar
-    setTxtProgressBar(pb, transcript_count)
 }
-
-close(pb)
 
 # Save vcf as tsv
 write_tsv(vcf_body, file = paste0(snakemake@output[["vcf"]]))

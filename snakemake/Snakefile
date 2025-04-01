@@ -1,6 +1,10 @@
 # This pipeline can be run for different types of analysis (tumor subtypes, tumor vs tumor...) 
 # Based on the specification in the config file
 
+# Get absolute position of current file 
+import os
+pwd = os.popen('pwd').read()
+
 configfile: "config.yaml"
 
 # Select outputs expected by rule all based on config
@@ -8,8 +12,7 @@ outputs = list()
 if config["tumor_subtypes"]:
     outputs.append('''PUT HERE FINAL OUTPUT OF TUMOR SUBTYPES SUB-PIPELINE''')
 if config["tumor_vs_tumor"]:
-    outputs.append(config["output"]+"/tumor_vs_tumor/haplotype.vcf"),
-    outputs.append(config["output"]+"/tumor_vs_tumor/haplotype_IDs.csv")
+    outputs.append(expand(config["output"]+"/tumor_vs_tumor/vcf_files/chr{chr}_haplotype.vcf", chr=range(1,23)))
 if config["pathway_alteration"]:
     output.append('''PUT HERE FINAL OUTPUT OF PATHWAY ALTERATION SUB-PIPELINE ''')
 
@@ -43,10 +46,10 @@ rule make_pfiles_ts:
     output:
         config["output"]+"/{cancer_type}/pfiles/{cancer_type}"
     shell:
-        '''/shares/CIBIO-Storage/BCG/scratch1/Tools/plink2.0/plink2 /
-            --vcf {input} /
-            --make-pgen /
-            --out {output} /
+        '''/shares/CIBIO-Storage/BCG/scratch1/Tools/plink2.0/plink2 \
+            --vcf {input} \
+            --make-pgen \
+            --out {output} \
             --vcf-half-call m
         '''
 
@@ -69,13 +72,42 @@ rule make_cov_pheno_ts:
 #   the other tumor types                           #
 #===================================================#
 
-# Takes matrices of mutated sequences and generates vcf for plink association 
-rule make_vcf_tt:
-    # Inputs (the list of tumor types, the transcripts wt sequences and the trasncripts
-    # annotations) are taken directly from inside the script since they are constant and
-    # can be read from the config file
+# Generate unique ID for each haplotype
+# This rule generate one job, independently from the number of tumors, that runs in 
+# parallel with a number of cores specified in params@cores
+rule haplotype_ID:
+    params:
+        cores = 40,
+        abs_path = pwd
     output:
-        vcf = config["output"]+"/tumor_vs_tumor/haplotype.vcf",
-        IDs = config["output"]+"/tumor_vs_tumor/haplotype_IDs.csv"
+        IDs = config["output"]+"/tumor_vs_tumor/haplotypes_IDs.csv"
+    script:
+        "../scripts/tumor_vs_tumor/haplotype_ID.R"
+
+# Takes matrices of mutated sequences and generates one vcf per chromosome for plink association 
+rule make_vcf_tt:
+    input:
+        IDs = rules.haplotype_ID.output.IDs
+    output:
+        vcf = config["output"]+"/tumor_vs_tumor/vcf_files/chr{chr}_haplotype.vcf"
+    conda:
+        "envs/Renv.yaml"
+    params:
+        abs_path = pwd,
+        chr = {chr}
     script:
         "../scripts/tumor_vs_tumor/haplotype_vcf.R"
+
+# Turn the vcf into a suitable file format for plink2
+rule make_pfiles_tt:
+    input:
+        rules.make_vcf_tt.output.vcf
+    output:
+        temp(config['output']+"/tumor_vs_tumor/pfiles/done.txt")
+    shell:
+        "/shares/CIBIO-Storage/BCG/scratch1/Tools/plink2.0/plink2 \\"+ # backslash escape
+            "--vcf {input} \\"+
+            "--make-pgen \\"+
+            "--out "+config["output"]+"/tumor_vs_tumor/pfiles/haplotypes \\"+
+            "--vcf-half-call m && touch {output}"
+        

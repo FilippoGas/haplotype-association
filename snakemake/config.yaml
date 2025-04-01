@@ -1,12 +1,12 @@
 # PATHS
-data_folder: "/shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/cvep-plm/tumors"
-output: "/shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/TCGA_haplotype_associations/TCGA"
+data_folder: "/shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/MutSeqGenerator/tumors"
+output: "/shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/TCGA_haplotype_association/TCGA"
+wt_transcripts: "/shares/CIBIO-Storage/BCG/scratch/fgastaldello/resources/protein_coding_transcripts"
+haplotyple_csv: ""
 
 # Wildcards
 cancer_types: ["DLBC","UCS"]
 # "UVM","DLBC","ACC","BLCA","BRCA","CESC","CHOL","COAD","ESCA","GBM","HNSC","KICH","KIRC","KIRP","LAML","LGG","LIHC","LUAD","LUSC","MESO","OV","PAAD","PCPG","PRAD","READ","SARC","SKCM","STAD","TGCT","THCA","THYM","UCEC","UCS"
-
-# RULES
 
 # Analysis type
 tumor_subtypes:     FALSE
