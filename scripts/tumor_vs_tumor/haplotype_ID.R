@@ -74,4 +74,9 @@ res <- mclapply(rownames(sequences_aa),
 
 # Concatenate results together
 haplotype_IDs <- bind_rows(res)
+
+haplotype_IDs <- haplotype_IDs %>% mutate(ensembl_transcript_id = str_split_i(haplotype_ID, "\\.",1))
+# Set rownames for haplotype_ID for faster retrieval during the generation of the genotypes
+haplotype_IDs <- haplotype_IDs %>% mutate(rowname = paste0(sequence, ensembl_transcript_id))
+
 write_csv(haplotype_IDs, file = snakemake@output[["IDs"]])

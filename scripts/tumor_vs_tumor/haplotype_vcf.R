@@ -11,13 +11,15 @@ library(parallel)
 snakefile_abs_path <- gsub("[\r\n]", "", snakemake@params[["abs_path"]])
 # Maximum number of ALT alleles (Plink2 constrain)
 ALT_limit = 254
+# Get number of cores to use from params
+cores <- snakemake@params[["cores"]]
+# Get chromosome name from expected output name
+chr <- str_split_i(str_split_i(basename(snakemake@output[["vcf"]]), "_", 1), "chr", 2)
 
 ################################
 # READ INPUTS FROM CONFIG.YAML #
 ################################
 config <- yaml::read_yaml(paste0(snakefile_abs_path,'/config.yaml'))
-# Cores for parallel computing (WARNING: vcf creation fase uses 2x cores)
-cores = config$cores_make_vcf_tt
 # List of tumor types to take into consideration
 tumor_list <- config$cancer_types
 # wt sequence of proteins of interest, only keep those with a valid sequence
@@ -28,96 +30,41 @@ sequences_aa <- sequences_aa %>% filter(sequence != "Sequence unavailable")
 # order them in the vcf file)
 load(paste0(config$wt_transcripts, "/protein_coding_transcripts.RData"))
 transcript_positions <- protein_coding_transcripts %>%
-                            filter(ensembl_transcript_id %in% rownames(sequences_aa)) %>%
+                            filter(ensembl_transcript_id %in% rownames(sequences_aa),
+                                   chromosome_name == chr) %>%
                             select(ensembl_transcript_id, transcript_start, chromosome_name) %>% 
                             unique()
 rm(protein_coding_transcripts)
 # Location of mutated sequences
 mutated_sequences_path <- config$data_folder # To this path add "/{cancer_type}/mutated_sequences/aa/
 
-#################################
-# CREATE HAPLOTYPE ID DATAFRAME #
-#################################
-
-# Each tumor type has the same set of transcripts analysed, but the haplotypes
-# may be different from tumor to tumor. For this reason the different files
-# containing the different haplotypes for each transcript in each tumor need to 
-# be merged together.
-
-# Create df structure for the new IDs
-haplotype_IDs <- data.frame("haplotype_ID" = character(),
-                            "sequence" = character())
-
-res <- mclapply(rownames(sequences_aa),
-                FUN = function(transcript){
-                        # Given a transcript look for its file in each tumor's folder and merge 
-                        # them together
-                        transcript_haplotypes <- data.frame()
-                        for (tumor in tumor_list) {
-                            transcript_haplotypes <- rbind(transcript_haplotypes,
-                                                           read_csv(paste0(config$data_folder, "/",tumor, "/ESM_inputs/",transcript, ".csv"),
-                                                                    col_names = FALSE))
-                        }
-                        # Some tumors might have common haplotypes
-                        transcript_haplotypes <- transcript_haplotypes %>% unique() %>% dplyr::rename(haplotypes = X1)
-                        # Now that all the unique haplotypes for the current transcripts are collected,
-                        # They must be associated to an ID (ENSTID+counter)
-                        hap_counter <- 1
-                        for (haplotype in transcript_haplotypes$haplotypes) {
-                            # The wt sequence will not have a suffix number to be recognized as the 
-                            # reference sequence
-                            if (!is.na(sequences_aa[transcript,'sequence']) & (haplotype == str_split_i(sequences_aa[transcript, 'sequence'], "\\*", 1))) {
-                                haplotype_IDs <- rbind(haplotype_IDs,
-                                                       c("haplotype_ID" = transcript,
-                                                         "sequence" = haplotype))
-                            }else{
-                                haplotype_IDs <- rbind(haplotype_IDs,
-                                                       c("haplotype_ID" = paste0(transcript, ".", hap_counter),
-                                                         "sequence" = haplotype))
-                                hap_counter <- hap_counter + 1
-                            }
-                        }
-                        # Reset column names as they get changed
-                        colnames(haplotype_IDs) <- c("haplotype_ID", "sequence")
-                        return(haplotype_IDs)
-                    },
-                mc.preschedule = TRUE,
-                mc.cores = cores,
-                mc.cleanup = TRUE)
-
-# Concatenate results together
-haplotype_IDs <- bind_rows(res)
-
 #######################################
-# PUT TOGETHER MUTATED SEQUENCES FROM # 
-# ALL SAMPLES FROM ALL TUMORS         #
+# PUT TOGETHER MUTATED SEQUENCES OF   #
+# CURRENT CHROMOSOME FROM ALL TUMORS  #
 #######################################
-
-res <- mclapply(tumor_list,
-                FUN = function(tumor){
-                    # path for the mutated sequences of this specific tumor
-                    path <- paste0(mutated_sequences_path,"/", tumor, "/mutated_sequences/aa/")
-                    # Start concatenation of all chromosomes
-                    first <- TRUE
-                    for (chr in list.files(path)) {
-                        load(paste0(path, chr))
-                        if (first) {
-                            mutated_sequences <- result
-                            first <- FALSE
-                        }else{
-                            mutated_sequences <- rbind(mutated_sequences, result)
-                        }
-                    }
-                    return(mutated_sequences)
-                },
-                mc.cores = min(cores, length(tumor_list)),
-                mc.preschedule = TRUE,
-                mc.cleanup = TRUE)
-# Concatenate all tumors together
-mutated_sequences <- bind_cols(res)
+first <- TRUE
+for (tumor in tumor_list) {
+    # path for the mutated sequences of this specific tumor
+    path <- paste0(mutated_sequences_path,"/", tumor, "/mutated_sequences/aa/chr", chr, ".RData")
+    # Start concatenation of all chromosomes
+    load(path)
+    if (first) {
+        mutated_sequences <- result
+        first <- FALSE
+    }else{
+        mutated_sequences <- cbind(mutated_sequences, result)
+    }
+}
 # Only keep transcripts with a valid wt sequence
 mutated_sequences <- mutated_sequences[which(rownames(mutated_sequences) %in% rownames(sequences_aa)),]
+#################################
+#       READ IN HAPLOTYPE_ID    # 
+#################################
 
+haplotype_IDs <- read_csv(snakemake@input[["IDs"]], col_names = TRUE)
+haplotype_IDs <- haplotype_IDs %>% column_to_rownames(var = 'rowname')
+# Only keep IDs of haplotypes of interest
+haplotype_IDs <- haplotype_IDs %>% filter(ensembl_transcript_id %in% rownames(mutated_sequences))
 
 #############################
 #       BUILD VCF FILE      # 
@@ -139,8 +86,6 @@ mutated_sequences <- mutated_sequences[which(rownames(mutated_sequences) %in% ro
 # the chromosome name
 transcript_positions <- transcript_positions %>%    arrange(chromosome_name, transcript_start) %>% 
                                                     mutate(chromosome_name = paste0("chr", chromosome_name))
-haplotype_IDs <- haplotype_IDs %>% mutate(ensembl_transcript_id = str_split_i(haplotype_ID, "\\.",1))
-
 # Create ALT column
 alt_ID_vectors <- haplotype_IDs %>% split(.$ensembl_transcript_id) %>% map(pull, haplotype_ID)
 alt_ID_col <- lapply(alt_ID_vectors, function(x){
@@ -170,9 +115,6 @@ vcf_body <- vcf_body %>% mutate(REF = paste0("<", REF))
 vcf_body <- vcf_body %>% filter(!is.na(ALT))
 # Remove variants with more than ALT_limit variants 
 vcf_body <- vcf_body %>% filter(sapply(ALT, function(x) length(str_split_1(x, ",")) <= ALT_limit))
-# Set rownames for haplotype_ID for faster retrieval during the generation of the genotypes
-haplotype_IDs <- haplotype_IDs %>% mutate(rowname = paste0(sequence, ensembl_transcript_id))
-haplotype_IDs <- haplotype_IDs %>% column_to_rownames(var = "rowname")
 # For each transcript, check genotype of each sample
 res <- mclapply(vcf_body$ID, FUN = function(transcript){
         # Initialize genotype vector
@@ -219,4 +161,3 @@ colnames(genotypes) <- c("ID", colnames(mutated_sequences))
 vcf <- vcf_body %>% left_join(genotypes, by = "ID")
 # Save vcf file and haplotype IDs
 write_tsv(vcf, file = snakemake@output[["vcf"]])
-write_csv(haplotype_IDs, file = snakemake@output[["IDs"]])

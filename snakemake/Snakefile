@@ -12,7 +12,7 @@ outputs = list()
 if config["tumor_subtypes"]:
     outputs.append('''PUT HERE FINAL OUTPUT OF TUMOR SUBTYPES SUB-PIPELINE''')
 if config["tumor_vs_tumor"]:
-    outputs.append(expand(config["output"]+"/tumor_vs_tumor/vcf_files/chr{chr}_haplotype.vcf", chr=range(1,23)))
+    outputs.append(expand(config['output']+"/tumor_vs_tumor/pfiles/{chr}/done.txt", chr=range(1,23)))
 if config["pathway_alteration"]:
     output.append('''PUT HERE FINAL OUTPUT OF PATHWAY ALTERATION SUB-PIPELINE ''')
 
@@ -94,7 +94,7 @@ rule make_vcf_tt:
         "envs/Renv.yaml"
     params:
         abs_path = pwd,
-        chr = {chr}
+        cores = 2
     script:
         "../scripts/tumor_vs_tumor/haplotype_vcf.R"
 
@@ -103,11 +103,11 @@ rule make_pfiles_tt:
     input:
         rules.make_vcf_tt.output.vcf
     output:
-        temp(config['output']+"/tumor_vs_tumor/pfiles/done.txt")
+        temp(config['output']+"/tumor_vs_tumor/pfiles/{chr}/done.txt")
     shell:
         "/shares/CIBIO-Storage/BCG/scratch1/Tools/plink2.0/plink2 \\"+ # backslash escape
             "--vcf {input} \\"+
             "--make-pgen \\"+
-            "--out "+config["output"]+"/tumor_vs_tumor/pfiles/haplotypes \\"+
+            "--out "+config["output"]+"/tumor_vs_tumor/pfiles/{wildcards.chr}/haplotypes \\"+
             "--vcf-half-call m && touch {output}"
         
