@@ -2,7 +2,10 @@
 data_folder: "/shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/MutSeqGenerator/tumors"
 output: "/shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/TCGA_haplotype_association/TCGA"
 wt_transcripts: "/shares/CIBIO-Storage/BCG/scratch/fgastaldello/resources/protein_coding_transcripts"
-haplotyple_csv: ""
+pathway_alteration_table: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/dataTabs/somaticAlterations/10oncogenicPathways/1-s2.0-S0092867418303593-mmc4.xlsx"
+tumor_subtypes_list: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/dataTabs/Cancer_subtypes_list.tsv"
+clinical_data: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/data/combined_study_clinical_data.tsv"
+PCs: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/PCs/TCGA_Affy_all.eigenvec"
 
 # Wildcards
 cancer_types: ["DLBC","UCS"]

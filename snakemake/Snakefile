@@ -7,12 +7,14 @@ pwd = os.popen('pwd').read()
 
 configfile: "config.yaml"
 
-# Select outputs expected by rule all based on config
+# Select outputs expected by rule all, based on config
 outputs = list()
 if config["tumor_subtypes"]:
     outputs.append('''PUT HERE FINAL OUTPUT OF TUMOR SUBTYPES SUB-PIPELINE''')
 if config["tumor_vs_tumor"]:
-    outputs.append(expand(config['output']+"/tumor_vs_tumor/pfiles/{chr}/done.txt", chr=range(1,23)))
+    outputs.append(config["output"]+"/tumor_vs_tumor/covariates"),
+    outputs.append(config["output"]+"/tumor_vs_tumor/phenotypes"),
+    outputs.append(expand(config["output"]+"/tumor_vs_tumor/pfiles/chr{chr}/done.txt", chr=range(1,23)))
 if config["pathway_alteration"]:
     output.append('''PUT HERE FINAL OUTPUT OF PATHWAY ALTERATION SUB-PIPELINE ''')
 
@@ -103,11 +105,24 @@ rule make_pfiles_tt:
     input:
         rules.make_vcf_tt.output.vcf
     output:
-        temp(config['output']+"/tumor_vs_tumor/pfiles/{chr}/done.txt")
+        temp(config["output"]+"/tumor_vs_tumor/pfiles/chr{chr}/done.txt")
     shell:
-        "/shares/CIBIO-Storage/BCG/scratch1/Tools/plink2.0/plink2 \\"+ # backslash escape
+        "/shares/CIBIO-Storage/BCG/scratch1/Tools/plink2.0/plink2 \\"+
             "--vcf {input} \\"+
             "--make-pgen \\"+
-            "--out "+config["output"]+"/tumor_vs_tumor/pfiles/{wildcards.chr}/haplotypes \\"+
+            "--out "+config["output"]+"/tumor_vs_tumor/pfiles/chr{wildcards.chr}/haplotypes \\"+
             "--vcf-half-call m && touch {output}"
         
+# make covariates and phenotype files for Plink
+rule make_cov_pheno_tt:
+    input:
+        vcf = config["output"]+"/tumor_vs_tumor/vcf_files/chr21_haplotype.vcf",
+        clinical_data = config["clinical_data"],
+        PCs = config["PCs"]
+    params:
+        tumor_list = config["cancer_types"]
+    output:
+        cov = config["output"]+"/tumor_vs_tumor/covariates",
+        pheno = config["output"]+"/tumor_vs_tumor/phenotypes"
+    script:
+        "../scripts/tumor_vs_tumor/make_covariates_pheno.R"
