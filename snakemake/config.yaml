@@ -6,12 +6,26 @@ pathway_alteration_table: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/dat
 tumor_subtypes_list: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/dataTabs/Cancer_subtypes_list.tsv"
 clinical_data: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/data/combined_study_clinical_data.tsv"
 PCs: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/PCs/TCGA_Affy_all.eigenvec"
+plink2: "/shares/CIBIO-Storage/BCGLAB/Tools/plink2.0/plink2"
 
-# Wildcards
-cancer_types: ["DLBC","UCS"]
+# WILDCARDS
+cancer_types: ["UVM","DLBC","ACC","BLCA","CESC","CHOL","COAD","ESCA","GBM","HNSC","KICH","KIRC","KIRP","LAML","LGG","LIHC","LUAD","LUSC","MESO","OV","PAAD","PCPG","PRAD","READ","SARC","SKCM","STAD","TGCT","THCA","THYM","UCEC","UCS"]
 # "UVM","DLBC","ACC","BLCA","BRCA","CESC","CHOL","COAD","ESCA","GBM","HNSC","KICH","KIRC","KIRP","LAML","LGG","LIHC","LUAD","LUSC","MESO","OV","PAAD","PCPG","PRAD","READ","SARC","SKCM","STAD","TGCT","THCA","THYM","UCEC","UCS"
 
-# Analysis type
+# ANALYSIS TYPE
 tumor_subtypes:     FALSE
 tumor_vs_tumor:     TRUE
 pathway_alteration: FALSE
+
+# PLINK2 MODELS
+
+# Plink includes the model used in the output filename. Since the additive model is used
+# by default, the name would have a blank spot creating problems to snakemake.
+# so hide-cover is used as placeholder for the additive output filename
+model: ["hide-covar", "dominant", "recessive" ]
+
+
+# CORES
+haplotype_ID_cores: 50
+make_vcf_tt_cores: 3
+plink_glm_cores: 2
