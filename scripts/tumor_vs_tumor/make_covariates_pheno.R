@@ -13,31 +13,32 @@ clinical_data <- snakemake@input[["clinical_data"]]
 PCs <- snakemake@input[["PCs"]]
 tumor_list <- snakemake@params[["tumor_list"]]
 # Get samples list from vcf
-sample_list <- colnames(as_data_frame(read_delim(vcf, delim = "\t", col_names = TRUE))[-c(1:9)])
+sample_list <- as.character(colnames(read_delim(vcf, delim = "\t", col_names = TRUE)))[-c(1:9)]
 
 #############################
 #   PREPARE PHENOTYPE FILE  #
 #############################
-tumor_type <- read_delim(clinical_data, delim = "\t", col_names = TRUE) %>% 
-            select(`Patient ID`, `TCGA PanCanAtlas Cancer Type Acronym`) %>%
-            dplyr::rename(tumor = `TCGA PanCanAtlas Cancer Type Acronym`) %>% 
-            filter(tumor %in% tumor_list) %>% 
-            pivot_wider(names_from = tumor, values_from = tumor)
-tumor_type <- tumor_type %>% column_to_rownames(var = "Patient ID")
-tumor_type[!is.na(tumor_type)] <- "1" 
-tumor_type[is.na(tumor_type)] <- "0" 
-tumor_type <- tumor_type %>% rownames_to_column(var = "Patient ID")
 pheno <- data.frame("sample" = sample_list) %>% mutate(`Patient ID` = str_sub(sample, 1, 12))
-pheno <- pheno %>%  left_join(tumor_type, by = "Patient ID") %>% 
-                    select(-`Patient ID`) %>% 
-                    dplyr::rename(`#IID` = "sample")
-
+pheno <- pheno %>%  left_join(read_delim(clinical_data, delim = "\t", col_names = TRUE, col_types = "c") %>% 
+                                  select(`Patient ID`, `TCGA PanCanAtlas Cancer Type Acronym`) %>%
+                                  dplyr::rename(tumor = `TCGA PanCanAtlas Cancer Type Acronym`) %>% 
+                                  filter(tumor %in% tumor_list) %>% 
+                                  unique(),
+                              by = "Patient ID") %>% 
+                    select(-`Patient ID`) %>%
+                    drop_na() %>% 
+                    pivot_wider(values_from = "tumor", names_from = "tumor")
+pheno <- pheno %>% column_to_rownames(var = "sample")
+pheno[!is.na(pheno)] <- "1"
+pheno[is.na(pheno)] <- "0"
+pheno <- pheno %>% rownames_to_column(var = "#IID")
 ##############################
 #   PREPARE COVARIATES FILE  #
 ##############################
 cov <- data.frame("sample" = sample_list) %>% mutate(`Patient ID` = str_sub(sample, 1, 12))
 cov <- cov %>% left_join(read_delim(clinical_data, delim = "\t", col_names = TRUE) %>% 
-                            select(`Patient ID`, `Diagnosis Age`, Sex),
+                                select(`Patient ID`, `Diagnosis Age`, Sex) %>% 
+                                unique(),
                          by = "Patient ID") %>% 
                 mutate(Sex = gsub("Male","1", Sex),
                        Sex = gsub("Female","2",Sex),
@@ -46,7 +47,9 @@ prcomp <- read_delim(PCs, delim = "\t", col_names = TRUE) %>%
             select(-`#FID`) %>% 
             dplyr::rename("PCID" = "IID")
 cov <- cov %>%  left_join(prcomp, by = "PCID") %>% 
-                select(-c("Patient ID", "PCID"))
+                select(-c("Patient ID", "PCID")) %>% 
+                dplyr::rename("#IID" = "sample",
+                              "Age" = "Diagnosis Age")
 
 write_tsv(cov, file = snakemake@output[["cov"]])
 write_tsv(pheno, file = snakemake@output[["pheno"]])
