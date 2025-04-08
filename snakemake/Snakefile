@@ -14,7 +14,7 @@ if config["tumor_subtypes"]:
 if config["tumor_vs_tumor"]:
     outputs.append(config["output"]+"/tumor_vs_tumor/covariates"),
     outputs.append(config["output"]+"/tumor_vs_tumor/phenotypes"),
-    outputs.append(expand(config["output"]+"/tumor_vs_tumor/pfiles/chr{chr}/done.txt", chr=range(1,23)))
+    outputs.append(expand(config["output"]+"/tumor_vs_tumor/plink_results/chr{chr}/chr{chr}_{phenotype}_{model}_done.txt", chr=range(1,23), model=config["model"], phenotype=config["cancer_types" ]))
 if config["pathway_alteration"]:
     output.append('''PUT HERE FINAL OUTPUT OF PATHWAY ALTERATION SUB-PIPELINE ''')
 
@@ -79,7 +79,7 @@ rule make_cov_pheno_ts:
 # parallel with a number of cores specified in params@cores
 rule haplotype_ID:
     params:
-        cores = 40,
+        cores = config["haplotype_ID_cores"],
         abs_path = pwd
     output:
         IDs = config["output"]+"/tumor_vs_tumor/haplotypes_IDs.csv"
@@ -96,7 +96,7 @@ rule make_vcf_tt:
         "envs/Renv.yaml"
     params:
         abs_path = pwd,
-        cores = 2
+        cores = config["make_vcf_tt_cores"]
     script:
         "../scripts/tumor_vs_tumor/haplotype_vcf.R"
 
@@ -105,9 +105,9 @@ rule make_pfiles_tt:
     input:
         rules.make_vcf_tt.output.vcf
     output:
-        temp(config["output"]+"/tumor_vs_tumor/pfiles/chr{chr}/done.txt")
+        pgen = config["output"]+"/tumor_vs_tumor/pfiles/chr{chr}/haplotypes.pgen"
     shell:
-        "/shares/CIBIO-Storage/BCG/scratch1/Tools/plink2.0/plink2 \\"+
+        config["plink2"]+" \\"+
             "--vcf {input} \\"+
             "--make-pgen \\"+
             "--out "+config["output"]+"/tumor_vs_tumor/pfiles/chr{wildcards.chr}/haplotypes \\"+
@@ -116,7 +116,7 @@ rule make_pfiles_tt:
 # make covariates and phenotype files for Plink
 rule make_cov_pheno_tt:
     input:
-        vcf = config["output"]+"/tumor_vs_tumor/vcf_files/chr21_haplotype.vcf",
+        vcf = config["output"]+"/tumor_vs_tumor/vcf_files/chr22_haplotype.vcf",
         clinical_data = config["clinical_data"],
         PCs = config["PCs"]
     params:
@@ -126,3 +126,26 @@ rule make_cov_pheno_tt:
         pheno = config["output"]+"/tumor_vs_tumor/phenotypes"
     script:
         "../scripts/tumor_vs_tumor/make_covariates_pheno.R"
+
+rule run_plink:
+    input:
+        pgen = config["output"]+"/tumor_vs_tumor/pfiles/chr{chr}/haplotypes.pgen",
+        cov = rules.make_cov_pheno_tt.output.cov,
+        pheno = rules.make_cov_pheno_tt.output.pheno
+    params:
+        cores = config["plink_glm_cores"]
+    output:
+        temp(config["output"]+"/tumor_vs_tumor/plink_results/chr{chr}/chr{chr}_{phenotype}_{model}_done.txt")
+    shell:
+        config["plink2"]+
+            " --pfile "+config["output"]+"/tumor_vs_tumor/pfiles/chr{wildcards.chr}/haplotypes"+
+            " --pheno {input.pheno}" +
+            " --pheno-name {wildcards.phenotype}"
+            " --covar {input.cov}" +
+            " --glm {wildcards.model} hide-covar" +
+            " --covar-variance-standardize" +
+            " --1" +
+            " --maf 0.01" +
+            " --threads {params.cores}" +
+            " --out " + config["output"] + "/tumor_vs_tumor/plink_results/chr{wildcards.chr}/{wildcards.model}" +
+            " && touch {output}"
