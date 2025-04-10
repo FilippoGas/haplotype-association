@@ -12,9 +12,8 @@ outputs = list()
 if config["tumor_subtypes"]:
     outputs.append('''PUT HERE FINAL OUTPUT OF TUMOR SUBTYPES SUB-PIPELINE''')
 if config["tumor_vs_tumor"]:
-    outputs.append(config["output"]+"/tumor_vs_tumor/covariates"),
-    outputs.append(config["output"]+"/tumor_vs_tumor/phenotypes"),
-    outputs.append(expand(config["output"]+"/tumor_vs_tumor/plink_results/chr{chr}/chr{chr}_{phenotype}_{model}_done.txt", chr=range(1,23), model=config["model"], phenotype=config["cancer_types" ]))
+    outputs.append(expand(config["output"]+"/tumor_vs_tumor/plink_results/chr{chr}/{model}.{phenotype}.logistic.hybrid", model=config["model"], chr=range(1,23), phenotype=config["cancer_types"]))
+
 if config["pathway_alteration"]:
     output.append('''PUT HERE FINAL OUTPUT OF PATHWAY ALTERATION SUB-PIPELINE ''')
 
@@ -127,6 +126,7 @@ rule make_cov_pheno_tt:
     script:
         "../scripts/tumor_vs_tumor/make_covariates_pheno.R"
 
+# Run Plink on each model/phenotype/chromosome independently
 rule run_plink:
     input:
         pgen = config["output"]+"/tumor_vs_tumor/pfiles/chr{chr}/haplotypes.pgen",
@@ -135,7 +135,7 @@ rule run_plink:
     params:
         cores = config["plink_glm_cores"]
     output:
-        temp(config["output"]+"/tumor_vs_tumor/plink_results/chr{chr}/chr{chr}_{phenotype}_{model}_done.txt")
+        dominant = config["output"]+"/tumor_vs_tumor/plink_results/chr{chr}/{model}.{phenotype}.logistic.hybrid"
     shell:
         config["plink2"]+
             " --pfile "+config["output"]+"/tumor_vs_tumor/pfiles/chr{wildcards.chr}/haplotypes"+
@@ -149,3 +149,6 @@ rule run_plink:
             " --threads {params.cores}" +
             " --out " + config["output"] + "/tumor_vs_tumor/plink_results/chr{wildcards.chr}/{wildcards.model}" +
             " && touch {output}"
+
+# Put together results of different chromosomes from same model/phenotype couple
+#rule combine_results:
