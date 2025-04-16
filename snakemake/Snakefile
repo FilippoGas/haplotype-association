@@ -12,7 +12,8 @@ outputs = list()
 if config["tumor_subtypes"]:
     outputs.append('''PUT HERE FINAL OUTPUT OF TUMOR SUBTYPES SUB-PIPELINE''')
 if config["tumor_vs_tumor"]:
-    outputs.append(expand(config["output"]+"/tumor_vs_tumor/plink_results/chr{chr}/{model}.{phenotype}.logistic.hybrid", model=config["model"], chr=range(1,23), phenotype=config["cancer_types"]))
+    outputs.append(config["output"]+"/tumor_vs_tumor/cleanup_done.txt"),
+    outputs.append(expand(config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/done", phenotype=config["cancer_types"], model=config["model"]))
 
 if config["pathway_alteration"]:
     output.append('''PUT HERE FINAL OUTPUT OF PATHWAY ALTERATION SUB-PIPELINE ''')
@@ -135,7 +136,7 @@ rule run_plink:
     params:
         cores = config["plink_glm_cores"]
     output:
-        dominant = config["output"]+"/tumor_vs_tumor/plink_results/chr{chr}/{model}.{phenotype}.logistic.hybrid"
+        temp(config["output"]+"/tumor_vs_tumor/plink_results/chr{chr}/{model}.{phenotype}.glm.logistic.hybrid")
     shell:
         config["plink2"]+
             " --pfile "+config["output"]+"/tumor_vs_tumor/pfiles/chr{wildcards.chr}/haplotypes"+
@@ -147,8 +148,41 @@ rule run_plink:
             " --1" +
             " --maf 0.01" +
             " --threads {params.cores}" +
-            " --out " + config["output"] + "/tumor_vs_tumor/plink_results/chr{wildcards.chr}/{wildcards.model}" +
-            " && touch {output}"
+            " --out " + config["output"] + "/tumor_vs_tumor/plink_results/chr{wildcards.chr}/{wildcards.model}"
 
 # Put together results of different chromosomes from same model/phenotype couple
-#rule combine_results:
+#
+# This script needs to take into account that some phenotypes (tumors) may not have any plink 
+# result because of a low number of samples
+#
+# Only chr1 is passed through input, the other chromosomes are collected inside the script
+#
+# This rule needs --scheduler greedy to avoid standby on job selection
+rule combine_results:
+    input:
+        prev_rule_output = expand(config["output"]+"/tumor_vs_tumor/plink_results/chr{chr}/{model}.{phenotype}.glm.logistic.hybrid", chr=range(1,23), model=config["model"], phenotype=config["cancer_types"]),
+        plink_results = config["output"]+"/tumor_vs_tumor/plink_results/chr1/{model}.{phenotype}.glm.logistic.hybrid"
+    output:
+        config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid"
+    script:
+        "../scripts/tumor_vs_tumor/combine_results.R"
+
+# Remove temp dirs
+rule cleanup:
+    input:
+        expand(config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid", phenotype=config["cancer_types"], model=config["model"])
+    output:
+        temp(config["output"]+"/tumor_vs_tumor/cleanup_done.txt")
+    shell:
+        "rm -rf "+config["output"]+"/tumor_vs_tumor/plink_results/chr* && touch {output}"
+
+# Plot results
+rule plots:
+    input:
+        config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid"
+    output:
+        temp(config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/done")
+    params:
+        anno = config["wt_transcripts"]+"/protein_coding_transcripts.RData"
+    script:
+        "../scripts/tumor_vs_tumor/plots.R"

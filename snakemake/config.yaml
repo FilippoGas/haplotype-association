@@ -9,7 +9,7 @@ PCs: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/PCs/TCGA_Affy_all.eigenv
 plink2: "/shares/CIBIO-Storage/BCGLAB/Tools/plink2.0/plink2"
 
 # WILDCARDS
-cancer_types: ["UVM","DLBC","ACC","BLCA","CESC","CHOL","COAD","ESCA","GBM","HNSC","KICH","KIRC","KIRP","LAML","LGG","LIHC","LUAD","LUSC","MESO","OV","PAAD","PCPG","PRAD","READ","SARC","SKCM","STAD","TGCT","THCA","THYM","UCEC","UCS"]
+cancer_types: ["DLBC","ACC","BLCA","BRCA","CESC","CHOL","COAD","ESCA","GBM","HNSC","KICH","KIRC","KIRP","LGG","LIHC","LUAD","LUSC","MESO","OV","PAAD","PCPG","PRAD","READ","SARC","SKCM","STAD","TGCT","THCA","THYM","UCEC","UCS"]
 # "UVM","DLBC","ACC","BLCA","BRCA","CESC","CHOL","COAD","ESCA","GBM","HNSC","KICH","KIRC","KIRP","LAML","LGG","LIHC","LUAD","LUSC","MESO","OV","PAAD","PCPG","PRAD","READ","SARC","SKCM","STAD","TGCT","THCA","THYM","UCEC","UCS"
 
 # ANALYSIS TYPE
@@ -28,4 +28,4 @@ model: ["hide-covar", "dominant", "recessive" ]
 # CORES
 haplotype_ID_cores: 50
 make_vcf_tt_cores: 3
-plink_glm_cores: 2
+plink_glm_cores: 1
