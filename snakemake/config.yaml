@@ -6,7 +6,7 @@ pathway_alteration_table: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/dat
 tumor_subtypes_list: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/dataTabs/Cancer_subtypes_list.tsv"
 clinical_data: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/data/combined_study_clinical_data.tsv"
 PCs: "/shares/CIBIO-Storage/BCG/scratch1/Resources/TCGA/PCs/TCGA_Affy_all.eigenvec"
-plink2: "/shares/CIBIO-Storage/BCGLAB/Tools/plink2.0/plink2"
+plink2: "/shares/CIBIO-Storage/BCGLAB/Tools/plink2.0/plink2a4.6"
 
 # WILDCARDS
 cancer_types: ["DLBC","ACC","BLCA","BRCA","CESC","CHOL","COAD","ESCA","GBM","HNSC","KICH","KIRC","KIRP","LGG","LIHC","LUAD","LUSC","MESO","OV","PAAD","PCPG","PRAD","READ","SARC","SKCM","STAD","TGCT","THCA","THYM","UCEC","UCS"]
