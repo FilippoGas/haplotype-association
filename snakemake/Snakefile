@@ -5,6 +5,7 @@
 import os
 pwd = os.popen('pwd').read()
 
+
 configfile: "config.yaml"
 
 # Select outputs expected by rule all, based on config
@@ -13,7 +14,8 @@ if config["tumor_subtypes"]:
     outputs.append('''PUT HERE FINAL OUTPUT OF TUMOR SUBTYPES SUB-PIPELINE''')
 if config["tumor_vs_tumor"]:
     outputs.append(config["output"]+"/tumor_vs_tumor/cleanup_done.txt"),
-    outputs.append(expand(config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/done", phenotype=config["cancer_types"], model=config["model"]))
+    outputs.append(expand(config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_check_pval", phenotype = config["cancer_types"], model = config["model"])),
+    outputs.append(expand(config["output"]+"/tumor_vs_tumor/logistic_results/{model}.{phenotype}.logistic", phenotype = config["cancer_types"], model = config["model"]))
 
 if config["pathway_alteration"]:
     output.append('''PUT HERE FINAL OUTPUT OF PATHWAY ALTERATION SUB-PIPELINE ''')
@@ -181,8 +183,37 @@ rule plots:
     input:
         config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid"
     output:
-        temp(config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/done")
+        config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_plots"
     params:
         anno = config["wt_transcripts"]+"/protein_coding_transcripts.RData"
     script:
         "../scripts/tumor_vs_tumor/plots.R"
+
+# This rule internally launches multiple threads in R, limit execution with "load"
+rule check_pvalues:
+    input:
+        plots = config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_plots",
+        plink_results = expand(config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid", phenotype=config["cancer_types"], model=config["model"]),
+        haplotype_ID = rules.haplotype_ID.output.IDs
+    params:
+        vcf_location = config["output"]+"/tumor_vs_tumor/vcf_files"
+    output:
+        config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_check_pval"
+    resources:
+        load = 1
+    script:
+        "../scripts/tumor_vs_tumor/check_pval.R"
+
+rule logistic_regression:
+    input:
+        check_pvalue = rules.check_pvalues.output,
+        plink_results = expand(config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid", phenotype=config["cancer_types"], model=config["model"]),
+        covariates = rules.make_cov_pheno_tt.output.cov
+    params:
+        vcf_location = config["output"]+"/tumor_vs_tumor/vcf_files/",
+        clinical_data = config["clinical_data"]
+    resources:
+        load = 1
+    output:
+        config["output"]+"/tumor_vs_tumor/logistic_results/{model}.{phenotype}.logistic"
+    
