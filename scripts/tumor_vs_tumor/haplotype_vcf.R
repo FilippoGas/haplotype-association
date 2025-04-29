@@ -89,6 +89,7 @@ transcript_positions <- transcript_positions %>%    arrange(chromosome_name, tra
 # Create ALT column
 alt_ID_vectors <- haplotype_IDs %>% split(.$ensembl_transcript_id) %>% map(pull, haplotype_ID)
 alt_ID_col <- lapply(alt_ID_vectors, function(x){
+    x <- sort(x)
     if(!str_detect(x[1], "\\.")){
         x <- x[-1]
     }

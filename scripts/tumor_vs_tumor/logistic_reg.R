@@ -8,7 +8,6 @@ library(parallel)
 
 # SNAKEMAKE INPUT ----
 results_path <- snakemake@input[["plink_results"]]
-haplotype_ID_path <- snakemake@input[["haplotype_ID"]]
 covariates_path <- snakemake@input[["covariates"]]
 # SNAKEMAKE PARAMS ----
 vcf_location <- snakemake@params[["vcf_location"]]

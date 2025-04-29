@@ -204,9 +204,10 @@ rule check_pvalues:
     script:
         "../scripts/tumor_vs_tumor/check_pval.R"
 
+# This rule internally launches multiple threads in R, limit execution with "load"
 rule logistic_regression:
     input:
-        check_pvalue = rules.check_pvalues.output,
+        plots = config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_plots",
         plink_results = expand(config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid", phenotype=config["cancer_types"], model=config["model"]),
         covariates = rules.make_cov_pheno_tt.output.cov
     params:
