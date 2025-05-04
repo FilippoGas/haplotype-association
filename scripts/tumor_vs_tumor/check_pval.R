@@ -17,7 +17,7 @@ vcf_location <- snakemake@params[["vcf_location"]]
 tumor_type <- str_split_i(basename(results_path), "\\.", 2)
 model_type <- str_split_i(basename(results_path), "\\.", 1)
 
-plot_outdir <- paste0(str_split_i(snakemake@output[[1]], "logistic_results", 1),"plots/", tumor_type, "/", model_type, "/")
+plot_outdir <- paste0(str_split_i(snakemake@output[[1]], "plots", 1),"plots/", tumor_type, "/", model_type, "/")
 
 model_names <- list("hide-covar"="additive",
                     "dominant"="dominant",

@@ -105,7 +105,7 @@ rule make_vcf_tt:
 # Turn the vcf into a suitable file format for plink2
 rule make_pfiles_tt:
     input:
-        rules.make_vcf_tt.output.vcf
+        config["output"]+"/tumor_vs_tumor/vcf_files/chr{chr}_haplotype.vcf"
     output:
         pgen = config["output"]+"/tumor_vs_tumor/pfiles/chr{chr}/haplotypes.pgen"
     shell:
@@ -118,7 +118,7 @@ rule make_pfiles_tt:
 # make covariates and phenotype files for Plink
 rule make_cov_pheno_tt:
     input:
-        vcf = config["output"]+"/tumor_vs_tumor/vcf_files/chr22_haplotype.vcf",
+        vcf = config["output"]+"/tumor_vs_tumor/vcf_files/chr22_haplotype.vcf", # vcf only used to extract the list of samples
         clinical_data = config["clinical_data"],
         PCs = config["PCs"]
     params:
