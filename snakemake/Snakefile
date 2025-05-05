@@ -218,4 +218,4 @@ rule logistic_regression:
     output:
         config["output"]+"/tumor_vs_tumor/logistic_results/{model}.{phenotype}.logistic"
     script:
-        "../script/tumor_vs_tumor/logistic_reg.R"
+        "../scripts/tumor_vs_tumor/logistic_reg.R"

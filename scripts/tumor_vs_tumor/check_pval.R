@@ -122,8 +122,7 @@ colnames(pval_dist) <- c("AF", "pval_thresh", "count")
 p <- pval_dist %>% ggplot(aes(x = AF, y = as.numeric(count), group = pval_thresh, color = pval_thresh)) +
                     geom_line() +
                     geom_point() +
-                    scale_color_viridis(discrete = TRUE) +
-                    theme_ipsum_inter()
+                    scale_color_viridis(discrete = TRUE)
 ggsave(p,
        filename = paste0(plot_outdir, "pval_dist_over_AF.pdf"),
        device = "pdf")

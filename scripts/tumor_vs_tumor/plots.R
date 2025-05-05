@@ -11,7 +11,7 @@ plink_result <- snakemake@input[[1]]
 plink_result <- read_tsv(plink_result)
 
 # Get output path
-outdir <- str_split_i(snakemake@output[[1]], "done", 1)
+outdir <- str_split_i(snakemake@output[[1]], ".done", 1)
 
 # Read in transcripts annotations, cancer type and model
 anno <- load(snakemake@params[["anno"]])
