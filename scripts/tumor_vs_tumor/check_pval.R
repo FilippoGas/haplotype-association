@@ -7,6 +7,8 @@ library(tidyverse)
 library(ggplot2)
 library(ggpubr)
 library(parallel)
+library(hrbrthemes)
+library(viridis)
 
 # SNAKEMAKE INPUTS ----
 results_path <- snakemake@input[["plink_results"]]
@@ -62,7 +64,7 @@ p <- plink_results %>%
         left_join(n_haplotypes, by = join_by(ID==ensembl_transcript_id)) %>% 
         select(ID, P, haplotypes) %>%
         ggplot(aes(x = haplotypes, y = P)) +
-            geom_point(size = 0.5) +
+            geom_point(size = 0.3) +
             stat_cor(method = "spearman", label.y = 0.035, label.x = 200) +
             ggtitle("Number of haplotype vs P-value")
 ggsave(p,
@@ -98,13 +100,33 @@ freq = mclapply(hap_freq$haplotype_id,
 # extract list's elements and use them as column for correlation
 hap_freq[,"freq"] <- sapply(freq, function(x){ x[[1]] })
 p <- hap_freq %>% ggplot(aes(x = freq, y = P)) +
-                    geom_point(size = 0.5) +
+                    geom_point(size = 0.3) +
                     stat_cor(method = "spearman", label.y = 0.045, label.x = 200) +
                     ggtitle("Haplotype frequency vs P-value")
 ggsave(p,
        filename = paste0(plot_outdir, "corr_pval_hap_freq.png"),
        device = "png")
 
+# Compute Pvalues distribution over AF, at different thresholds of pvalues
+AF_breaks <- list(0.5, 0.25, 0.1, 0.05, 0.01, 0.005, 0.001)
+pval_thresh <- list(0.05, 1e-03, 1e-04, 1e-05, 1e-06)
+pval_dist <- data_frame("AF" = numeric(), "pval_thresh" = character(), "count" = double())
+for (AF_value in AF_breaks) {
+    for (pval in pval_thresh) {
+         count <- hap_freq %>% filter(P<pval, freq > AF_value) %>% nrow()
+         pval_dist <- rbind(pval_dist, c(AF_value, as.character(pval), as.double(count)))
+    }
+}
+colnames(pval_dist) <- c("AF", "pval_thresh", "count")
+
+p <- pval_dist %>% ggplot(aes(x = AF, y = as.numeric(count), group = pval_thresh, color = pval_thresh)) +
+                    geom_line() +
+                    geom_point() +
+                    scale_color_viridis(discrete = TRUE) +
+                    theme_ipsum_inter()
+ggsave(p,
+       filename = paste0(plot_outdir, "pval_dist_over_AF.pdf"),
+       device = "pdf")
 
 # WRITE FAKE SNAKEMAKE OUTPUT
 writeLines("done", snakemake@output[[1]])

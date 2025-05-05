@@ -13,7 +13,7 @@ outputs = list()
 if config["tumor_subtypes"]:
     outputs.append('''PUT HERE FINAL OUTPUT OF TUMOR SUBTYPES SUB-PIPELINE''')
 if config["tumor_vs_tumor"]:
-    outputs.append(config["output"]+"/tumor_vs_tumor/cleanup_done.txt"),
+    outputs.append(config["output"]+"/tumor_vs_tumor/.cleanup_done"),
     outputs.append(expand(config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_check_pval", phenotype = config["cancer_types"], model = config["model"])),
     outputs.append(expand(config["output"]+"/tumor_vs_tumor/logistic_results/{model}.{phenotype}.logistic", phenotype = config["cancer_types"], model = config["model"]))
 
@@ -174,7 +174,7 @@ rule cleanup:
     input:
         expand(config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid", phenotype=config["cancer_types"], model=config["model"])
     output:
-        temp(config["output"]+"/tumor_vs_tumor/cleanup_done.txt")
+        config["output"]+"/tumor_vs_tumor/.cleanup_done"
     shell:
         "rm -rf "+config["output"]+"/tumor_vs_tumor/plink_results/chr* && touch {output}"
 
@@ -193,7 +193,7 @@ rule plots:
 rule check_pvalues:
     input:
         plots = config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_plots",
-        plink_results = expand(config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid", phenotype=config["cancer_types"], model=config["model"]),
+        plink_results = config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid",
         haplotype_ID = rules.haplotype_ID.output.IDs
     params:
         vcf_location = config["output"]+"/tumor_vs_tumor/vcf_files"
@@ -208,7 +208,7 @@ rule check_pvalues:
 rule logistic_regression:
     input:
         plots = config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_plots",
-        plink_results = expand(config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid", phenotype=config["cancer_types"], model=config["model"]),
+        plink_results = config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid",
         covariates = rules.make_cov_pheno_tt.output.cov
     params:
         vcf_location = config["output"]+"/tumor_vs_tumor/vcf_files/",
@@ -217,4 +217,5 @@ rule logistic_regression:
         load = 1
     output:
         config["output"]+"/tumor_vs_tumor/logistic_results/{model}.{phenotype}.logistic"
-    
+    script:
+        "../script/tumor_vs_tumor/logistic_reg.R"
