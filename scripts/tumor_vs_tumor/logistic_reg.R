@@ -22,13 +22,10 @@ model_names <- list("hide-covar"="additive",
                     "dominant"="dominant",
                     "recessive"="recessive")
 
-cores_logistic = 30
+cores_logistic = snakemake@params[["cores"]]
 
 # READ PLINK RESULTS----
-plink_results <- read_tsv(file = results_path);
-# Only keep results with pvalue<0.0001 and no error code
-plink_results <- plink_results %>% filter(P<0.05, ERRCODE==".")
-
+plink_results <- read_tsv(file = results_path)
 
 # READ VCF FILES----
 # Used to retrieve information about the genotypes.
@@ -73,7 +70,7 @@ logreg_results <- mclapply(plink_results$A1,       # For each significative asso
                                
                                # Based on the haplotype I am considering change the genotype 
                                # wrt to it in the 3 association model (additive, recessive and dominant)
-                               data <- data %>%    dplyr::mutate(additive = str_count(GT, paste0("(?<!\\d)", hap_number,"(?!\\d)")),
+                               data <- data %>%    dplyr::mutate(additive = str_count(GT, paste0("(?<!\\d)", hap_number,"(?!\\d)")), # Match single digit
                                                                  recessive = ifelse(str_count(GT, paste0("(?<!\\d)", hap_number,"(?!\\d)"))==2, 1, 0),
                                                                  dominant = ifelse(str_count(GT, paste0("(?<!\\d)", hap_number,"(?!\\d)"))==0, 0, 1))
                                
@@ -136,7 +133,7 @@ logreg_results <- mclapply(plink_results$A1,       # For each significative asso
                                # write_lines(pred_confusion_matrix, file = paste0(logistic_outdir, "pred_conf_matrix.txt"))
                                
                                summary <-  cbind(hap_id,
-                                                 as.data.frame(t(str_split(capture.output(summary(trained_model))[12], "\\s+")[[1]])))
+                                                 as.data.frame(t(str_split(capture.output(summary(trained_model))[12], "\\s+")[[1]]))) # \\s+ matches any number of whitespaces
                                return(summary[,-length(colnames(summary))])
                                
                            },

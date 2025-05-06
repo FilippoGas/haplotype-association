@@ -25,7 +25,7 @@ model_names <- list("hide-covar"="additive",
                     "dominant"="dominant",
                     "recessive"="recessive")
 
-cores_freq = 30
+cores_freq = snakemake@params[["cores"]]
 
 # READ PLINK RESULTS----
 plink_results <- read_tsv(file = results_path);
@@ -65,7 +65,7 @@ p <- plink_results %>%
         select(ID, P, haplotypes) %>%
         ggplot(aes(x = haplotypes, y = P)) +
             geom_point(size = 0.3) +
-            stat_cor(method = "spearman", label.y = 0.035, label.x = 200) +
+            stat_cor(method = "spearman") +
             ggtitle("Number of haplotype vs P-value")
 ggsave(p,
        filename = paste0(plot_outdir, "corr_pval_nhap.png"),
@@ -101,7 +101,7 @@ freq = mclapply(hap_freq$haplotype_id,
 hap_freq[,"freq"] <- sapply(freq, function(x){ x[[1]] })
 p <- hap_freq %>% ggplot(aes(x = freq, y = P)) +
                     geom_point(size = 0.3) +
-                    stat_cor(method = "spearman", label.y = 0.045, label.x = 200) +
+                    stat_cor(method = "spearman") +
                     ggtitle("Haplotype frequency vs P-value")
 ggsave(p,
        filename = paste0(plot_outdir, "corr_pval_hap_freq.png"),

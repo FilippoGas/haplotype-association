@@ -29,3 +29,5 @@ model: ["hide-covar", "dominant", "recessive" ]
 haplotype_ID_cores: 50
 make_vcf_tt_cores: 3
 plink_glm_cores: 1
+check_pval_cores: 30
+log_reg_cores: 30
