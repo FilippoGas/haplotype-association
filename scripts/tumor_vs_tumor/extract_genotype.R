@@ -5,6 +5,7 @@
 
 library(tidyverse)
 library(vcfR)
+library(parallel)
 
 # SNAKEMAKE INPUT ----
 haplotype_ID <- read.csv("/shares/CIBIO-Storage/BCG/scratch/fgastaldello/data/TCGA_haplotype_association/TCGA/tumor_vs_tumor/haplotypes_IDs.csv")
@@ -21,10 +22,12 @@ haplotype_ID <- haplotype_ID %>% left_join(protein_coding_transcripts %>%
                                            by = "ensembl_transcript_id")  
 
 # Let's go through haplotype_ID per chromosome
+results <- c()
 for (chr in seq(1,22)) {
     
-    # Subset haplotype_ID to the transcripts belonging to this chromosome
-    haplotype_ID_chr <- haplotype_ID %>% filter(chromosome_name == chr)
+    # Subset haplotype_ID to the transcripts belonging to this chromosome and remove reference haplotype
+    haplotype_ID_chr <- haplotype_ID %>% filter(chromosome_name == chr,
+                                                str_detect(haplotype_ID, "\\."))
     # Put together mutated sequences of this chromosome from all tumors
     mutated_sequences_path <- lapply(tumor_types,
                                      function(x) {
@@ -39,46 +42,66 @@ for (chr in seq(1,22)) {
     for (file in mutated_sequences_path) {
         load(file)
         if (first) {
-            temp <- mutated_sequences
+            temp <- result
             first <- FALSE
         }else{
-            temp <- cbind(temp, mutated_sequences)
+            temp <- cbind(temp, result)
         }
     }
     mutated_sequences <- temp
     rm(temp)
+    rm(result)
+    
+    # Only keep valid mutated sequences
+    mutated_sequences_chr <- mutated_sequences[rownames(mutated_sequences) %in% haplotype_ID_chr$ensembl_transcript_id,]
     
     # For each mutated sequence find the first sample with the same sequence and
     # look for his genotype in that specific region
-    res <- mclapply(haplotype_ID_chr$sequence,
-                    function(hap) {
+    res <- mclapply(haplotype_ID_chr$haplotype_ID[1:20],
+                    function(id) {
                         # Get the transcript ID relative to this haplotype
-                        transcript <- haplotype_ID %>% filter(sequence == hap) %>% select(ensembl_transcript_id) %>% as.character()
-                        for (sample in colnames(mutated_sequences)) {
+                        transcript <- haplotype_ID_chr %>% filter(haplotype_ID == id) %>% select(ensembl_transcript_id) %>% as.character()
+                        # Get the haplotype sequence
+                        hap <- haplotype_ID_chr %>% filter(haplotype_ID == id) %>% select(sequence) %>% as.character()
+                        for (sample in colnames(mutated_sequences_chr)) {
                             # Sequences are saved as "seq1-seq2"
-                            sequences <- str_split_1(mutated_sequences[transcript, sample], pattern = "-")
-                            # Exit loop when a sample with this haplotype is found
+                            sequences <- str_split_1(mutated_sequences_chr[transcript, sample], pattern = "-")
+                            # Exit loop when a sample with this haplotype is found, and keep track of the allele
+                            # containing the desired sequence
                             if (sequences[1]==hap) {
+                                allele <- 1
                                 break
                             }
                             if (sequences[2]==hap) {
+                                allele <- 2
                                 break
                             }
                         }
                         # sample found, read vcf from system, regions can be retrieved from
                         # protein_coding_transcripts' exon coordinates
                         exon_regions <- protein_coding_transcripts %>% 
-                                            filter(ensembl_transcript_id==transcript) %>% 
-                                            select(chromosome_name, exon_chrom_start, exon_chrom_end) %>% 
-                                            mutate(region = paste0(chromosome_name, ":", exon_chrom_start, "-", exon_chrom_end)) %>% 
+                                            filter(ensembl_transcript_id==transcript)%>% 
+                                            mutate(region = paste0("chr", chromosome_name, ":", exon_chrom_start, "-", exon_chrom_end)) %>% 
                                             select(region)
                         exon_regions <- paste0(exon_regions$region, collapse = ",")
-                        # Prepare bash command 
-                        query <- paste0("bcftools query ")
+                        # Prepare bash command and collect result
+                        query <- paste0("bcftools query -f '[%CHROM\t%POS\t%REF\t%ALT\t%GT\n]' -r ",exon_regions, " -s ", sample, " ",  phased_vcf_path, "chr", chr, ".phased.vcf.gz")
+                        genotypes <- read.table(text = system(query, intern = TRUE))
+                        colnames(genotypes) <- c("CHROM","POS", "REF", "ALT", "GT")
+                        # Only keep genotypes, different from REF, for the allele that generate the sequence of interest
+                        genotypes <- genotypes %>% mutate(GT = str_split_i(GT, "\\|", as.numeric(allele))) %>% filter(!GT==0)           #CHECK FOR HAPLOTYPES WITH NO VARIANTS
+                        # Reformat variants in the fom CHR:POS.REF>ALT
+                        genotypes <- genotypes %>% mutate(variants = paste0(CHROM, ":", POS, ".", REF, ">", ALT))
                         
+                        # Return variants in vector form
+                        return(data_frame("haplotype_ID" = id,
+                                          "variants" = paste0(genotypes$variants, collapse = ",")))
                     },
-                    mc.cores = 50,
+                    mc.cores = 3,
                     mc.preschedule = TRUE,
                     mc.cleanup = TRUE)
+    
+    res <- bind_rows(res)
+    results <- c(results, res)
     
 }

@@ -25,7 +25,8 @@ model_names <- list("hide-covar"="additive",
 cores_logistic = snakemake@params[["cores"]]
 
 # READ PLINK RESULTS----
-plink_results <- read_tsv(file = results_path)
+plink_results <- read_tsv(file = results_path) %>% filter(P<0.05,
+                                                          ERRCODE==".")
 
 # READ VCF FILES----
 # Used to retrieve information about the genotypes.
@@ -116,22 +117,6 @@ logreg_results <- mclapply(plink_results$A1,       # For each significative asso
                                    trControl = ctrl,
                                    metric = "ROC"
                                )
-                               
-                               # # Save model summary and results
-                               # train_results <- as.data.frame(trained_model$results)
-                               # write_tsv(train_results, file = paste0(logistic_outdir, "trained_model_results.tsv"))
-                               # train_final_model <- capture.output(trained_model$finalModel)
-                               # write_lines(train_final_model, file = paste0(logistic_outdir, "trained_final_model.txt"))
-                               # train_model_summary <- capture.output(summary(trained_model))
-                               # write_lines(train_model_summary, file = paste0(logistic_outdir, "trained_model_summary.txt"))
-                               # # Save model itself
-                               # saveRDS(trained_model, file = paste0(logistic_outdir, "trained_model.rds"))
-                               # 
-                               # # Predict test set
-                               # predicted_classes <- predict(trained_model, test_data)
-                               # pred_confusion_matrix <- capture.output(confusionMatrix(predicted_classes, test_data$condition))
-                               # write_lines(pred_confusion_matrix, file = paste0(logistic_outdir, "pred_conf_matrix.txt"))
-                               
                                summary <-  cbind(hap_id,
                                                  as.data.frame(t(str_split(capture.output(summary(trained_model))[12], "\\s+")[[1]]))) # \\s+ matches any number of whitespaces
                                return(summary[,-length(colnames(summary))])

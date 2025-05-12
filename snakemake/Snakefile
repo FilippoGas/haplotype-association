@@ -181,7 +181,8 @@ rule cleanup:
 # Plot results
 rule plots:
     input:
-        config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid"
+        config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid",
+        config["output"]+"/tumor_vs_tumor/logistic_results/{model}.{phenotype}.logistic"
     output:
         config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_plots"
     params:
@@ -189,26 +190,10 @@ rule plots:
     script:
         "../scripts/tumor_vs_tumor/plots.R"
 
-# This rule internally launches multiple threads in R, limit execution with "load"
-rule check_pvalues:
-    input:
-        plots = config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_plots",
-        plink_results = config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid",
-        haplotype_ID = rules.haplotype_ID.output.IDs
-    params:
-        vcf_location = config["output"]+"/tumor_vs_tumor/vcf_files",
-        cores = config["check_pval_cores"]
-    resources:
-        load = 1
-    output:
-        config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_check_pval"
-    script:
-        "../scripts/tumor_vs_tumor/check_pval.R"
 
 # This rule internally launches multiple threads in R, limit execution with "load"
 rule logistic_regression:
     input:
-        plots = config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_plots",
         plink_results = config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid",
         covariates = rules.make_cov_pheno_tt.output.cov
     params:
@@ -220,4 +205,20 @@ rule logistic_regression:
     output:
         config["output"]+"/tumor_vs_tumor/logistic_results/{model}.{phenotype}.logistic"
     script:
-        "../scripts/tumor_vs_tumor/logistic_reg.R"
+        "ls"
+
+# This rule internally launches multiple threads in R, limit execution with "load"
+rule check_pvalues:
+    input:
+        logistic_results = config["output"]+"/tumor_vs_tumor/logistic_results/{model}.{phenotype}.logistic",
+        plink_results = config["output"]+"/tumor_vs_tumor/plink_results/{model}.{phenotype}.glm.logistic.hybrid",
+        haplotype_ID = rules.haplotype_ID.output.IDs
+    params:
+        vcf_location = config["output"]+"/tumor_vs_tumor/vcf_files",
+        cores = config["check_pval_cores"]
+    resources:
+        load = 1
+    output:
+        config["output"]+"/tumor_vs_tumor/plots/{phenotype}/{model}/.done_check_pval"
+    script:
+        "../scripts/tumor_vs_tumor/check_pval.R"
